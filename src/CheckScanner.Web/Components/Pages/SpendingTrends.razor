@@ -64,7 +64,18 @@
         </section>
 
         <section class="flex flex-col gap-2">
-            <h2 class="text-sm font-medium text-slate-900">Top items by total spend</h2>
+            <div class="flex items-center justify-between">
+                <h2 class="text-sm font-medium text-slate-900">Top items by total spend</h2>
+                <select
+                    value="@_selectedRangeMonths"
+                    @onchange="OnRangeChangedAsync"
+                    class="rounded-md border border-slate-300 bg-white px-2 py-1 text-xs text-slate-700 focus:border-slate-500 focus:outline-none">
+                    <option value="">All time</option>
+                    <option value="3">Last 3 months</option>
+                    <option value="6">Last 6 months</option>
+                    <option value="12">Last 12 months</option>
+                </select>
+            </div>
 
             @if (_topItems.Count == 0)
             {
@@ -76,7 +87,7 @@
                 var items = _topItems.Select((item, i) => new RankedBarListItem(
                     $"{i + 1}. {item.Description}",
                     item.TotalSpend.ToString("C"),
-                    maxSpend == 0 ? 0 : (double)(item.TotalSpend / maxSpend) * 100)).ToList();
+                    ChartMath.RatioOf(item.TotalSpend, maxSpend) * 100)).ToList();
                 <RankedBarList Items="items" />
             }
         </section>
@@ -89,15 +100,28 @@
     private IReadOnlyList<CategoryMonthSpendDto>? _categorySpend;
     private IReadOnlyList<TopItemSpendDto>? _topItems;
     private SpendingTrendsChartBuilder.ChartResult? _chart;
+    private string _selectedRangeMonths = "";
 
     protected override async Task OnInitializedAsync()
     {
         var categorySpendTask = SpendingTrendsService.GetCategorySpendByMonthAsync(CancellationToken.None);
-        var topItemsTask = SpendingTrendsService.GetTopItemsBySpendAsync(TopItemCount, CancellationToken.None);
-        await Task.WhenAll(categorySpendTask, topItemsTask);
+        await Task.WhenAll(categorySpendTask, LoadTopItemsAsync());
 
         _categorySpend = categorySpendTask.Result;
-        _topItems = topItemsTask.Result;
         _chart = _categorySpend.Count > 0 ? SpendingTrendsChartBuilder.Build(_categorySpend) : null;
+    }
+
+    private async Task OnRangeChangedAsync(ChangeEventArgs e)
+    {
+        _selectedRangeMonths = e.Value?.ToString() ?? "";
+        await LoadTopItemsAsync();
+    }
+
+    private async Task LoadTopItemsAsync()
+    {
+        var from = int.TryParse(_selectedRangeMonths, out var months)
+            ? DateOnly.FromDateTime(DateTime.UtcNow.Date).AddMonths(-months)
+            : (DateOnly?)null;
+        _topItems = await SpendingTrendsService.GetTopItemsBySpendAsync(TopItemCount, from, to: null, CancellationToken.None);
     }
 }

@@ -28,20 +28,26 @@ public sealed class SpendingTrendsQueryService(NpgsqlDataSource dataSource) : IS
             .ToList();
     }
 
-    public async Task<IReadOnlyList<TopItemSpendDto>> GetTopItemsBySpendAsync(int topN, CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<TopItemSpendDto>> GetTopItemsBySpendAsync(int topN, DateOnly? from, DateOnly? to, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
+
+        var fromOffset = from is null ? (DateTimeOffset?)null : new DateTimeOffset(from.Value.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        var toExclusiveOffset = to is null ? (DateTimeOffset?)null : new DateTimeOffset(to.Value.AddDays(1).ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
 
         var rows = await connection.QueryAsync<TopItemSpendDto>(
             new CommandDefinition(
                 """
-                SELECT description AS Description, SUM(line_total) AS TotalSpend
-                FROM receipt_line_items
-                GROUP BY description
-                ORDER BY SUM(line_total) DESC
+                SELECT li.description AS Description, SUM(li.line_total) AS TotalSpend
+                FROM receipt_line_items li
+                JOIN receipts r ON r.id = li.receipt_id
+                WHERE (@FromOffset::timestamptz IS NULL OR r.purchased_at >= @FromOffset)
+                  AND (@ToExclusiveOffset::timestamptz IS NULL OR r.purchased_at < @ToExclusiveOffset)
+                GROUP BY li.description
+                ORDER BY SUM(li.line_total) DESC
                 LIMIT @TopN
                 """,
-                new { TopN = topN },
+                new { FromOffset = fromOffset, ToExclusiveOffset = toExclusiveOffset, TopN = topN },
                 cancellationToken: cancellationToken));
 
         return rows.ToList();

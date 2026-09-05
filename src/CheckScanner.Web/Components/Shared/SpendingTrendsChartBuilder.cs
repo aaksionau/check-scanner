@@ -40,8 +40,7 @@ public static class SpendingTrendsChartBuilder
         var plotWidth = Width - 2 * PaddingSides;
         var barWidth = months.Count == 0 ? 0 : (plotWidth - BarGap * (months.Count - 1)) / (double)months.Count;
 
-        double ScaleHeight(decimal amount) =>
-            maxTotal == 0 ? 0 : (double)amount / (double)maxTotal * plotHeight;
+        double ScaleHeight(decimal amount) => ChartMath.RatioOf(amount, maxTotal) * plotHeight;
 
         var bars = months.Select((month, index) =>
         {

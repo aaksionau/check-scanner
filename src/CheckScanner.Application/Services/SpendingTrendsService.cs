@@ -9,6 +9,6 @@ public sealed class SpendingTrendsService(ISpendingTrendsQueryService spendingTr
     public Task<IReadOnlyList<CategoryMonthSpendDto>> GetCategorySpendByMonthAsync(CancellationToken cancellationToken) =>
         spendingTrendsQueryService.GetCategorySpendByMonthAsync(cancellationToken);
 
-    public Task<IReadOnlyList<TopItemSpendDto>> GetTopItemsBySpendAsync(int topN, CancellationToken cancellationToken) =>
-        spendingTrendsQueryService.GetTopItemsBySpendAsync(topN, cancellationToken);
+    public Task<IReadOnlyList<TopItemSpendDto>> GetTopItemsBySpendAsync(int topN, DateOnly? from, DateOnly? to, CancellationToken cancellationToken) =>
+        spendingTrendsQueryService.GetTopItemsBySpendAsync(topN, from, to, cancellationToken);
 }

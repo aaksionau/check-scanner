@@ -72,7 +72,7 @@
                 var items = _prices.Select(price => new RankedBarListItem(
                     ReceiptDisplayFormat.StoreName(price.StoreName),
                     price.UnitPrice.ToString("C"),
-                    maxPrice == 0 ? 0 : (double)(price.UnitPrice / maxPrice) * 100,
+                    ChartMath.RatioOf(price.UnitPrice, maxPrice) * 100,
                     Highlight: price.UnitPrice == cheapestPrice,
                     Subtitle: $"as of {ReceiptDisplayFormat.PurchasedAt(price.PurchasedAt)}")).ToList();
                 <RankedBarList Items="items" />
