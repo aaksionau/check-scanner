@@ -15,21 +15,44 @@ public class ReceiptReconcilerTests
     }
 
     [Fact]
-    public void WithinTolerance_IsNotFlagged()
+    public void WithinRealisticTaxRate_IsNotFlagged()
     {
-        var lineItems = new[] { LineItem(12.00m) };
+        var lineItems = new[] { LineItem(100.00m) };
 
-        var isFlagged = ReceiptReconciler.Reconcile(12.04m, lineItems);
+        // 7% sales tax on top of the line-item sum.
+        var isFlagged = ReceiptReconciler.Reconcile(107.00m, lineItems);
 
         Assert.False(isFlagged);
     }
 
     [Fact]
-    public void JustOutsideTolerance_IsFlagged()
+    public void ExceedsRealisticTaxRate_IsFlagged()
     {
-        var lineItems = new[] { LineItem(12.00m) };
+        var lineItems = new[] { LineItem(100.00m) };
 
-        var isFlagged = ReceiptReconciler.Reconcile(12.06m, lineItems);
+        // 25% gap is far beyond any plausible combined sales tax rate.
+        var isFlagged = ReceiptReconciler.Reconcile(125.00m, lineItems);
+
+        Assert.True(isFlagged);
+    }
+
+    [Fact]
+    public void RoundingDriftWithinCushion_IsNotFlagged()
+    {
+        var lineItems = new[] { LineItem(12.01m) };
+
+        var isFlagged = ReceiptReconciler.Reconcile(12.00m, lineItems);
+
+        Assert.False(isFlagged);
+    }
+
+    [Fact]
+    public void LineItemsExceedTotalBeyondCushion_IsFlagged()
+    {
+        var lineItems = new[] { LineItem(12.05m) };
+
+        // Line items summing above the printed total isn't explained by tax.
+        var isFlagged = ReceiptReconciler.Reconcile(12.00m, lineItems);
 
         Assert.True(isFlagged);
     }
