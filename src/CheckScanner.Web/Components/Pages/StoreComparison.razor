@@ -2,7 +2,7 @@
 @rendermode InteractiveServer
 @using CheckScanner.Application.Dtos
 @using CheckScanner.Web.Components.Shared
-@inject CheckScanner.Application.Services.StoreComparisonService StoreComparisonService
+@inject CheckScanner.Application.Services.PriceHistoryService PriceHistoryService
 
 <PageTitle>Store Comparison</PageTitle>
 
@@ -68,11 +68,12 @@
             else
             {
                 var maxPrice = _prices.Max(p => p.UnitPrice);
+                var cheapestPrice = _prices[0].UnitPrice;
                 <ul class="flex flex-col gap-2">
                     @foreach (var price in _prices)
                     {
                         var widthPercent = maxPrice == 0 ? 0 : (double)(price.UnitPrice / maxPrice) * 100;
-                        var isCheapest = price.UnitPrice == _prices[0].UnitPrice;
+                        var isCheapest = price.UnitPrice == cheapestPrice;
                         <li class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-3">
                             <div class="flex items-center justify-between text-sm">
                                 <span class="font-medium text-slate-900">@ReceiptDisplayFormat.StoreName(price.StoreName)</span>
@@ -103,13 +104,13 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _productNames = await StoreComparisonService.GetProductNamesAsync(CancellationToken.None);
+        _productNames = await PriceHistoryService.GetProductNamesAsync(CancellationToken.None);
     }
 
     private async Task SelectProductAsync(string productName)
     {
         _selectedProduct = productName;
-        var prices = await StoreComparisonService.GetLatestPricesByStoreAsync(productName, CancellationToken.None);
+        var prices = await PriceHistoryService.GetLatestPricesByStoreAsync(productName, CancellationToken.None);
         _prices = prices.OrderBy(p => p.UnitPrice).ToList();
     }
 

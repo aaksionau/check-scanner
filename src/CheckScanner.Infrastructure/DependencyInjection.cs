@@ -25,7 +25,6 @@ public static class DependencyInjection
 
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
         services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>();
-        services.AddScoped<IStoreComparisonQueryService, StoreComparisonQueryService>();
 
         services.Configure<PhotoStorageOptions>(configuration.GetSection(PhotoStorageOptions.SectionName));
         services.AddSingleton<IPhotoStore, FileSystemPhotoStore>();
