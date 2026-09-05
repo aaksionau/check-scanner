@@ -14,9 +14,6 @@ public static class PriceHistoryChartBuilder
     public const int Height = 160;
     private const int Padding = 28;
 
-    private static readonly string[] Palette =
-        ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
-
     public sealed record Series(string StoreName, string Color, string PolylinePoints, IReadOnlyList<(double X, double Y)> Points);
 
     public sealed record ChartResult(
@@ -55,7 +52,7 @@ public static class PriceHistoryChartBuilder
                 var ordered = group.OrderBy(p => p.PurchasedAt).ToList();
                 var coords = ordered.Select(p => (X: ScaleX(p.PurchasedAt), Y: ScaleY(p.UnitPrice))).ToList();
                 var polyline = string.Join(" ", coords.Select(c => $"{c.X:F1},{c.Y:F1}"));
-                var color = Palette[index % Palette.Length];
+                var color = ChartPalette.Colors[index % ChartPalette.Colors.Length];
                 return new Series(group.Key, color, polyline, coords);
             })
             .ToList();

@@ -69,23 +69,13 @@
             {
                 var maxPrice = _prices.Max(p => p.UnitPrice);
                 var cheapestPrice = _prices[0].UnitPrice;
-                <ul class="flex flex-col gap-2">
-                    @foreach (var price in _prices)
-                    {
-                        var widthPercent = maxPrice == 0 ? 0 : (double)(price.UnitPrice / maxPrice) * 100;
-                        var isCheapest = price.UnitPrice == cheapestPrice;
-                        <li class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-3">
-                            <div class="flex items-center justify-between text-sm">
-                                <span class="font-medium text-slate-900">@ReceiptDisplayFormat.StoreName(price.StoreName)</span>
-                                <span class="font-semibold @(isCheapest ? "text-green-600" : "text-slate-900")">@price.UnitPrice.ToString("C")</span>
-                            </div>
-                            <div class="h-2 w-full rounded-full bg-slate-100">
-                                <div class="h-2 rounded-full @(isCheapest ? "bg-green-500" : "bg-slate-400")" style="width: @(widthPercent.ToString("F1"))%"></div>
-                            </div>
-                            <span class="text-[11px] text-slate-400">as of @ReceiptDisplayFormat.PurchasedAt(price.PurchasedAt)</span>
-                        </li>
-                    }
-                </ul>
+                var items = _prices.Select(price => new RankedBarListItem(
+                    ReceiptDisplayFormat.StoreName(price.StoreName),
+                    price.UnitPrice.ToString("C"),
+                    maxPrice == 0 ? 0 : (double)(price.UnitPrice / maxPrice) * 100,
+                    Highlight: price.UnitPrice == cheapestPrice,
+                    Subtitle: $"as of {ReceiptDisplayFormat.PurchasedAt(price.PurchasedAt)}")).ToList();
+                <RankedBarList Items="items" />
             }
         }
     }

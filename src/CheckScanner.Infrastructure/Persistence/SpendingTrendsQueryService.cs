@@ -24,7 +24,7 @@ public sealed class SpendingTrendsQueryService(NpgsqlDataSource dataSource) : IS
                 cancellationToken: cancellationToken));
 
         return rows
-            .Select(r => new CategoryMonthSpendDto(DateOnly.FromDateTime(r.Month), r.Category, r.TotalSpend))
+            .Select(r => new CategoryMonthSpendDto(DateOnly.FromDateTime(PostgresTimestamp.ToUtcOffset(r.Month)!.Value.Date), r.Category, r.TotalSpend))
             .ToList();
     }
 

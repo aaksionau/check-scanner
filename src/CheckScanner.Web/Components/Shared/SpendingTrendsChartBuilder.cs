@@ -16,28 +16,25 @@ public static class SpendingTrendsChartBuilder
     private const int PaddingSides = 8;
     private const int BarGap = 8;
 
-    private static readonly string[] Palette =
-        ["#2563eb", "#dc2626", "#16a34a", "#d97706", "#7c3aed", "#0891b2", "#db2777", "#65a30d"];
-
     public sealed record Segment(string Category, string Color, double Y, double Height, decimal Amount);
 
     public sealed record Bar(string MonthLabel, IReadOnlyList<Segment> Segments, double X, double Width);
 
     public sealed record Legend(string Category, string Color);
 
-    public sealed record ChartResult(IReadOnlyList<Bar> Bars, IReadOnlyList<Legend> Legend, string MaxTotalLabel);
+    public sealed record ChartResult(IReadOnlyList<Bar> Bars, IReadOnlyList<Legend> Legend);
 
     /// <summary>Caller must pass a non-empty list.</summary>
     public static ChartResult Build(IReadOnlyList<CategoryMonthSpendDto> rows)
     {
         var categories = rows.Select(r => r.Category).Distinct().OrderBy(c => c).ToList();
         var colorByCategory = categories
-            .Select((category, index) => (category, color: Palette[index % Palette.Length]))
+            .Select((category, index) => (category, color: ChartPalette.Colors[index % ChartPalette.Colors.Length]))
             .ToDictionary(x => x.category, x => x.color);
 
-        var months = rows.Select(r => r.Month).Distinct().OrderBy(m => m).ToList();
-        var totalByMonth = months.ToDictionary(m => m, m => rows.Where(r => r.Month == m).Sum(r => r.TotalSpend));
-        var maxTotal = totalByMonth.Values.DefaultIfEmpty(0m).Max();
+        var rowsByMonth = rows.GroupBy(r => r.Month).ToDictionary(g => g.Key, g => g.OrderBy(r => r.Category).ToList());
+        var months = rowsByMonth.Keys.OrderBy(m => m).ToList();
+        var maxTotal = rowsByMonth.Values.Select(monthRows => monthRows.Sum(r => r.TotalSpend)).DefaultIfEmpty(0m).Max();
 
         var plotHeight = Height - PaddingTop - PaddingBottom;
         var plotWidth = Width - 2 * PaddingSides;
@@ -49,7 +46,7 @@ public static class SpendingTrendsChartBuilder
         var bars = months.Select((month, index) =>
         {
             var x = PaddingSides + index * (barWidth + BarGap);
-            var monthRows = rows.Where(r => r.Month == month).OrderBy(r => r.Category).ToList();
+            var monthRows = rowsByMonth[month];
 
             double cursorY = Height - PaddingBottom;
             var segments = new List<Segment>();
@@ -65,6 +62,6 @@ public static class SpendingTrendsChartBuilder
 
         var legend = categories.Select(c => new Legend(c, colorByCategory[c])).ToList();
 
-        return new ChartResult(bars, legend, maxTotal.ToString("C"));
+        return new ChartResult(bars, legend);
     }
 }
