@@ -1,7 +1,7 @@
 @page "/price-history"
 @rendermode InteractiveServer
 @using CheckScanner.Application.Dtos
-@inject CheckScanner.Application.Interfaces.IPriceHistoryQueryService PriceHistoryQueryService
+@inject CheckScanner.Application.Services.PriceHistoryService PriceHistoryService
 
 <PageTitle>Item Price History</PageTitle>
 
@@ -117,7 +117,7 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _productNames = await PriceHistoryQueryService.GetProductNamesAsync(CancellationToken.None);
+        _productNames = await PriceHistoryService.GetProductNamesAsync(CancellationToken.None);
     }
 
     private void OnSearchInput(ChangeEventArgs e)
@@ -128,7 +128,7 @@
     private async Task SelectProductAsync(string productName)
     {
         _selectedProduct = productName;
-        _points = await PriceHistoryQueryService.GetPriceHistoryAsync(productName, CancellationToken.None);
+        _points = await PriceHistoryService.GetPriceHistoryAsync(productName, CancellationToken.None);
         _chart = _points.Count > 0 ? PriceHistoryChartBuilder.Build(_points) : null;
     }
 
