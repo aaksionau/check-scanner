@@ -51,9 +51,8 @@ public class ReceiptReviewServiceTests
     {
         var receipt = Receipt(ReceiptStatus.ParseFailed, total: null, lineItems: []);
         var service = new ReceiptReviewService(new FakeReceiptRepository(receipt));
-        var edits = new[] { new ReceiptLineItemEditDto { Description = "Milk", Category = "Dairy", Quantity = 1, UnitPrice = 4.00m, LineTotal = 4.00m } };
 
-        var (status, savedLineItems) = await service.SaveAsync(receipt.Id, 4.00m, edits, CancellationToken.None);
+        var (status, savedLineItems) = await service.SaveAsync(receipt.Id, 4.00m, MilkEdits, CancellationToken.None);
 
         Assert.Equal(ReceiptStatus.Parsed, status);
         Assert.Single(savedLineItems);
@@ -65,9 +64,8 @@ public class ReceiptReviewServiceTests
         var receipt = Receipt(ReceiptStatus.ParseFailed, total: null, lineItems: []);
         var repository = new FakeReceiptRepository(receipt);
         var service = new ReceiptReviewService(repository);
-        var edits = new[] { new ReceiptLineItemEditDto { Description = "Milk", Category = "Dairy", Quantity = 1, UnitPrice = 4.00m, LineTotal = 4.00m } };
 
-        var (status, _) = await service.SaveAsync(receipt.Id, 40.00m, edits, CancellationToken.None);
+        var (status, _) = await service.SaveAsync(receipt.Id, 40.00m, MilkEdits, CancellationToken.None);
 
         Assert.Equal(ReceiptStatus.Flagged, status);
         var persisted = await repository.GetByIdAsync(receipt.Id, CancellationToken.None);
@@ -86,6 +84,9 @@ public class ReceiptReviewServiceTests
             Photos = [],
             LineItems = lineItems ?? []
         };
+
+    private static readonly ReceiptLineItemEditDto[] MilkEdits =
+        [new() { Description = "Milk", Category = "Dairy", Quantity = 1, UnitPrice = 4.00m, LineTotal = 4.00m }];
 
     private static ReceiptLineItem LineItem(decimal lineTotal) => new()
     {

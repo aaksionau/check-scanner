@@ -11,6 +11,6 @@ public sealed record NeedsReviewReceiptDto(
     decimal LineItemsSum,
     ReceiptStatus Status)
 {
-    /// <summary>Null when the receipt has no printed total to compare against, or parsing failed outright.</summary>
-    public decimal? MismatchAmount => Status == ReceiptStatus.Flagged && Total is { } total ? total - LineItemsSum : null;
+    /// <summary>Null when the receipt has no printed total to compare against (always the case for parse-failed receipts).</summary>
+    public decimal? MismatchAmount => Total is { } total ? total - LineItemsSum : null;
 }
