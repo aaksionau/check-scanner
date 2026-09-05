@@ -10,6 +10,7 @@ public static class DependencyInjection
         services.AddScoped<ReceiptUploadService>();
         services.AddScoped<ReceiptReviewService>();
         services.AddScoped<PriceHistoryService>();
+        services.AddScoped<SpendingTrendsService>();
         return services;
     }
 }

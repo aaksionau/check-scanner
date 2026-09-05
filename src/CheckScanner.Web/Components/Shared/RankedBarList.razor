@@ -1,0 +1,23 @@
+<ul class="flex flex-col gap-2">
+    @foreach (var item in Items)
+    {
+        <li class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-3">
+            <div class="flex items-center justify-between text-sm">
+                <span class="font-medium text-slate-900">@item.Label</span>
+                <span class="font-semibold @(item.Highlight ? "text-green-600" : "text-slate-900")">@item.ValueLabel</span>
+            </div>
+            <div class="h-2 w-full rounded-full bg-slate-100">
+                <div class="h-2 rounded-full @(item.Highlight ? "bg-green-500" : "bg-slate-400")" style="width: @(item.WidthPercent.ToString("F1"))%"></div>
+            </div>
+            @if (item.Subtitle is not null)
+            {
+                <span class="text-[11px] text-slate-400">@item.Subtitle</span>
+            }
+        </li>
+    }
+</ul>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<RankedBarListItem> Items { get; set; } = [];
+}
