@@ -40,14 +40,9 @@ public sealed class PriceHistoryQueryService(NpgsqlDataSource dataSource) : IPri
                 cancellationToken: cancellationToken));
 
         return rows
-            .Select(r => new PriceHistoryPointDto(AsUtcOffset(r.PurchasedAt!.Value), r.StoreName, r.UnitPrice))
+            .Select(r => new PriceHistoryPointDto(PostgresTimestamp.ToUtcOffset(r.PurchasedAt)!.Value, r.StoreName, r.UnitPrice))
             .ToList();
     }
-
-    // Npgsql maps `timestamptz` to plain DateTime (Kind=Utc) by default, not
-    // DateTimeOffset -- see ReceiptRepository for the same conversion.
-    private static DateTimeOffset AsUtcOffset(DateTime value) =>
-        new(DateTime.SpecifyKind(value, DateTimeKind.Utc));
 
     private sealed class PriceHistoryRow
     {

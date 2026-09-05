@@ -26,13 +26,9 @@ public static class PriceHistoryChartBuilder
         string MinPriceLabel,
         string MaxPriceLabel);
 
-    public static ChartResult? Build(IReadOnlyList<PriceHistoryPointDto> points)
+    /// <summary>Caller must pass a non-empty list.</summary>
+    public static ChartResult Build(IReadOnlyList<PriceHistoryPointDto> points)
     {
-        if (points.Count == 0)
-        {
-            return null;
-        }
-
         var minDate = points.Min(p => p.PurchasedAt);
         var maxDate = points.Max(p => p.PurchasedAt);
         var minPrice = points.Min(p => p.UnitPrice);
@@ -52,7 +48,7 @@ public static class PriceHistoryChartBuilder
                 : Height - Padding - (double)(price - minPrice) / (double)priceRange * (Height - 2 * Padding);
 
         var seriesByStore = points
-            .GroupBy(p => p.StoreName ?? "Unknown store")
+            .GroupBy(p => ReceiptDisplayFormat.StoreName(p.StoreName))
             .OrderBy(g => g.Key)
             .Select((group, index) =>
             {

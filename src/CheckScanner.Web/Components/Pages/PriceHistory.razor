@@ -1,5 +1,6 @@
 @page "/price-history"
 @rendermode InteractiveServer
+@using CheckScanner.Application.Dtos
 @inject CheckScanner.Application.Interfaces.IPriceHistoryQueryService PriceHistoryQueryService
 
 <PageTitle>Item Price History</PageTitle>
@@ -27,8 +28,9 @@
 
             @if (_selectedProduct is null)
             {
+                var filtered = FilteredProductNames;
                 <ul class="flex max-h-64 flex-col gap-1 overflow-y-auto">
-                    @foreach (var name in FilteredProductNames)
+                    @foreach (var name in filtered)
                     {
                         <li>
                             <button
@@ -39,7 +41,7 @@
                             </button>
                         </li>
                     }
-                    @if (FilteredProductNames.Count == 0)
+                    @if (filtered.Count == 0)
                     {
                         <li class="px-3 py-2 text-sm text-slate-500">No matching products.</li>
                     }
@@ -62,44 +64,40 @@
             {
                 <p class="text-sm text-slate-500">No dated purchases found for this product.</p>
             }
-            else
+            else if (_chart is not null)
             {
-                var chart = CheckScanner.Web.Components.Shared.PriceHistoryChartBuilder.Build(_points);
-                @if (chart is not null)
-                {
-                    <div class="rounded-lg border border-slate-200 bg-white p-3">
-                        <svg
-                            viewBox="0 0 @CheckScanner.Web.Components.Shared.PriceHistoryChartBuilder.Width @CheckScanner.Web.Components.Shared.PriceHistoryChartBuilder.Height"
-                            class="w-full" preserveAspectRatio="xMidYMid meet">
-                            @foreach (var series in chart.Series)
-                            {
-                                <polyline points="@series.PolylinePoints" fill="none" stroke="@series.Color" stroke-width="2" />
-                                @foreach (var point in series.Points)
-                                {
-                                    <circle cx="@point.X.ToString("F1")" cy="@point.Y.ToString("F1")" r="2.5" fill="@series.Color" />
-                                }
-                            }
-                        </svg>
-                        <div class="mt-1 flex justify-between text-[11px] text-slate-400">
-                            <span>@chart.MinDateLabel</span>
-                            <span>@chart.MaxDateLabel</span>
-                        </div>
-                        <div class="mt-1 flex justify-between text-[11px] text-slate-400">
-                            <span>@chart.MinPriceLabel</span>
-                            <span>@chart.MaxPriceLabel</span>
-                        </div>
-                    </div>
-
-                    <ul class="flex flex-wrap gap-x-4 gap-y-1">
-                        @foreach (var series in chart.Series)
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                    <svg
+                        viewBox="0 0 @PriceHistoryChartBuilder.Width @PriceHistoryChartBuilder.Height"
+                        class="w-full" preserveAspectRatio="xMidYMid meet">
+                        @foreach (var series in _chart.Series)
                         {
-                            <li class="flex items-center gap-1.5 text-xs text-slate-600">
-                                <span class="h-2 w-2 rounded-full" style="background-color: @series.Color"></span>
-                                @series.StoreName
-                            </li>
+                            <polyline points="@series.PolylinePoints" fill="none" stroke="@series.Color" stroke-width="2" />
+                            @foreach (var point in series.Points)
+                            {
+                                <circle cx="@point.X.ToString("F1")" cy="@point.Y.ToString("F1")" r="2.5" fill="@series.Color" />
+                            }
                         }
-                    </ul>
-                }
+                    </svg>
+                    <div class="mt-1 flex justify-between text-[11px] text-slate-400">
+                        <span>@_chart.MinDateLabel</span>
+                        <span>@_chart.MaxDateLabel</span>
+                    </div>
+                    <div class="mt-1 flex justify-between text-[11px] text-slate-400">
+                        <span>@_chart.MinPriceLabel</span>
+                        <span>@_chart.MaxPriceLabel</span>
+                    </div>
+                </div>
+
+                <ul class="flex flex-wrap gap-x-4 gap-y-1">
+                    @foreach (var series in _chart.Series)
+                    {
+                        <li class="flex items-center gap-1.5 text-xs text-slate-600">
+                            <span class="h-2 w-2 rounded-full" style="background-color: @series.Color"></span>
+                            @series.StoreName
+                        </li>
+                    }
+                </ul>
             }
         }
     }
@@ -109,7 +107,8 @@
     private IReadOnlyList<string>? _productNames;
     private string _searchTerm = "";
     private string? _selectedProduct;
-    private IReadOnlyList<CheckScanner.Application.Dtos.PriceHistoryPointDto>? _points;
+    private IReadOnlyList<PriceHistoryPointDto>? _points;
+    private PriceHistoryChartBuilder.ChartResult? _chart;
 
     private IReadOnlyList<string> FilteredProductNames =>
         string.IsNullOrWhiteSpace(_searchTerm)
@@ -129,14 +128,15 @@
     private async Task SelectProductAsync(string productName)
     {
         _selectedProduct = productName;
-        _points = null;
         _points = await PriceHistoryQueryService.GetPriceHistoryAsync(productName, CancellationToken.None);
+        _chart = _points.Count > 0 ? PriceHistoryChartBuilder.Build(_points) : null;
     }
 
     private void ClearSelection()
     {
         _selectedProduct = null;
         _points = null;
+        _chart = null;
         _searchTerm = "";
     }
 }
