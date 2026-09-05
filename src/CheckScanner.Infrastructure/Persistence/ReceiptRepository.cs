@@ -11,6 +11,8 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
     private const string ReceiptColumns =
         "id, store_name AS StoreName, purchased_at AS PurchasedAt, total, status, created_at AS CreatedAt";
 
+    private static readonly string[] NeedsReviewStatuses = [ReceiptStatus.Flagged.ToString(), ReceiptStatus.ParseFailed.ToString()];
+
     public async Task<Guid> AddAsync(Receipt receipt, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -98,7 +100,7 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
         return ToReceipt(row, photos, lineItems);
     }
 
-    public async Task<IReadOnlyList<Receipt>> GetFlaggedAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Receipt>> GetNeedsReviewAsync(CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
 
@@ -107,9 +109,10 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
                 $"""
                 SELECT {ReceiptColumns}
                 FROM receipts
-                WHERE status = 'Flagged'
+                WHERE status = ANY(@Statuses)
                 ORDER BY created_at DESC
                 """,
+                new { Statuses = NeedsReviewStatuses },
                 cancellationToken: cancellationToken))).ToList();
 
         var ids = receiptRows.Select(r => r.Id).ToArray();

@@ -23,11 +23,16 @@
                 <h1 class="text-lg font-semibold text-slate-900">@ReceiptDisplayFormat.StoreName(_receipt.StoreName)</h1>
                 <p class="text-xs text-slate-500">@ReceiptDisplayFormat.PurchasedAt(_receipt.PurchasedAt)</p>
             </div>
-            @if (_receipt.Status == ReceiptStatus.Flagged)
+            @if (ReceiptDisplayFormat.StatusBadge(_receipt.Status) is { } badge)
             {
-                <span class="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">Needs review</span>
+                <span class="shrink-0 rounded-full px-2 py-1 text-xs font-medium @badge.CssClass">@badge.Text</span>
             }
         </div>
+
+        @if (_receipt.Status == ReceiptStatus.ParseFailed)
+        {
+            <p class="text-sm text-rose-700">We couldn't parse this receipt automatically. Enter the line items and total below, then save.</p>
+        }
 
         @if (_receipt.Photos.Count > 0)
         {
