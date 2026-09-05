@@ -2,7 +2,7 @@ using CheckScanner.Domain.Enums;
 
 namespace CheckScanner.Domain.Entities;
 
-public sealed class Receipt
+public sealed record Receipt
 {
     public required Guid Id { get; init; }
     public string? StoreName { get; init; }

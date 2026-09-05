@@ -1,8 +1,8 @@
 using CheckScanner.Application;
 using CheckScanner.Application.Interfaces;
 using CheckScanner.Infrastructure;
+using CheckScanner.Infrastructure.Storage;
 using CheckScanner.Web.Components;
-using Microsoft.AspNetCore.StaticFiles;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -33,15 +33,11 @@ app.MapStaticAssets();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-var contentTypeProvider = new FileExtensionContentTypeProvider();
 app.MapGet("/photos/{fileName}", async (string fileName, IPhotoStore photoStore, CancellationToken cancellationToken) =>
 {
     // storagePath is a server-generated GUID filename; strip any path segments defensively before touching disk.
     var safeName = Path.GetFileName(fileName);
-    if (!contentTypeProvider.TryGetContentType(safeName, out var contentType))
-    {
-        contentType = "application/octet-stream";
-    }
+    var contentType = PhotoContentType.Resolve(safeName);
 
     try
     {

@@ -151,17 +151,7 @@
         _lineItems = savedLineItems.Select(ReceiptLineItemEditDto.FromEntity).ToList();
         _receipt = _receipt is null
             ? null
-            : new Domain.Entities.Receipt
-            {
-                Id = _receipt.Id,
-                StoreName = _receipt.StoreName,
-                PurchasedAt = _receipt.PurchasedAt,
-                Total = _total,
-                Status = status,
-                CreatedAt = _receipt.CreatedAt,
-                Photos = _receipt.Photos,
-                LineItems = savedLineItems
-            };
+            : _receipt with { Total = _total, Status = status, LineItems = savedLineItems };
         _lastSaveStatus = status;
         _isSaving = false;
     }
