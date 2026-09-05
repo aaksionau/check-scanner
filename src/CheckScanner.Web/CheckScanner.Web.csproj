@@ -1,0 +1,16 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <ItemGroup>
+    <ProjectReference Include="..\CheckScanner.Application\CheckScanner.Application.csproj" />
+    <ProjectReference Include="..\CheckScanner.Infrastructure\CheckScanner.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
+    <UserSecretsId>66a11453-649d-4a3c-8953-663b8c4eb4de</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

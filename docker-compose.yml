@@ -1,0 +1,36 @@
+# Local-dev Postgres for CheckScanner.Web. Not used in production -- the home
+# k3s cluster runs its own Postgres (see the sibling home-server repo).
+#
+#   docker compose up -d
+#
+# Then point the app at it:
+#   dotnet user-secrets set "ConnectionStrings:CheckScannerDb" \
+#     "Host=localhost;Port=5443;Database=checkscanner;Username=postgres;Password=checkscannerdev" \
+#     --project src/CheckScanner.Web
+#
+# Host port is 5443 (not the default 5432, and not personal-coach's 5442) to
+# avoid clashing with other local Postgres instances; the container still
+# listens on 5432 internally.
+#
+# The schema is applied automatically on `dotnet run` (see SchemaInitializer).
+
+services:
+  db:
+    image: postgres:17
+    container_name: checkscanner-db
+    environment:
+      POSTGRES_DB: checkscanner
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: checkscannerdev
+    ports:
+      - "5443:5432"
+    volumes:
+      - checkscanner-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d checkscanner"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  checkscanner-db-data:

@@ -1,0 +1,45 @@
+@page "/receipts"
+@rendermode InteractiveServer
+@inject CheckScanner.Application.Interfaces.IReceiptRepository ReceiptRepository
+
+<PageTitle>Receipts</PageTitle>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
+    <h1 class="text-lg font-semibold text-slate-900">Receipts</h1>
+
+    @if (_receipts is null)
+    {
+        <p class="text-sm text-slate-500">Loading…</p>
+    }
+    else if (_receipts.Count == 0)
+    {
+        <p class="text-sm text-slate-500">No receipts uploaded yet.</p>
+    }
+    else
+    {
+        <ul class="flex flex-col gap-2">
+            @foreach (var receipt in _receipts)
+            {
+                <li class="flex items-center justify-between rounded-lg border border-slate-200 bg-white px-4 py-3">
+                    <div>
+                        <p class="text-sm font-medium text-slate-900">@(receipt.StoreName ?? "Unknown store")</p>
+                        <p class="text-xs text-slate-500">@(receipt.PurchasedAt?.ToString("MMM d, yyyy") ?? "Date pending")</p>
+                    </div>
+                    <p class="text-sm font-semibold text-slate-900">@(receipt.Total is { } total ? total.ToString("C") : "—")</p>
+                </li>
+            }
+        </ul>
+    }
+</div>
+
+@code {
+    private IReadOnlyList<CheckScanner.Application.Dtos.ReceiptListItemDto>? _receipts;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var receipts = await ReceiptRepository.GetAllAsync(CancellationToken.None);
+        _receipts = receipts
+            .Select(r => new CheckScanner.Application.Dtos.ReceiptListItemDto(r.Id, r.StoreName, r.PurchasedAt, r.Total, r.Status))
+            .ToList();
+    }
+}

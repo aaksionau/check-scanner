@@ -1,0 +1,38 @@
+@inherits LayoutComponentBase
+@using Microsoft.AspNetCore.Components.Routing
+
+<div class="flex min-h-screen flex-col bg-slate-50">
+    <header class="border-b border-slate-200 bg-white">
+        <div class="mx-auto flex max-w-3xl items-center justify-between px-4 py-3 sm:px-6">
+            <a href="/" class="flex items-center gap-2">
+                <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">C</span>
+                <span class="text-base font-semibold text-slate-900">Check Scanner</span>
+            </a>
+            <nav class="flex items-center gap-1 text-sm font-medium">
+                <NavLink
+                    href=""
+                    Match="NavLinkMatch.All"
+                    class="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                    ActiveClass="bg-slate-900! text-white! hover:bg-slate-900!">
+                    Upload
+                </NavLink>
+                <NavLink
+                    href="receipts"
+                    class="rounded-full px-3 py-1.5 text-slate-600 transition hover:bg-slate-100 hover:text-slate-900"
+                    ActiveClass="bg-slate-900! text-white! hover:bg-slate-900!">
+                    Receipts
+                </NavLink>
+            </nav>
+        </div>
+    </header>
+
+    <main class="flex min-h-0 flex-1 flex-col">
+        @Body
+    </main>
+</div>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>

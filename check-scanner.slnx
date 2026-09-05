@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/CheckScanner.Application/CheckScanner.Application.csproj" />
+    <Project Path="src/CheckScanner.Domain/CheckScanner.Domain.csproj" />
+    <Project Path="src/CheckScanner.Infrastructure/CheckScanner.Infrastructure.csproj" />
+    <Project Path="src/CheckScanner.Web/CheckScanner.Web.csproj" />
+  </Folder>
+</Solution>

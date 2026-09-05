@@ -1,0 +1,5 @@
+bin/
+obj/
+src/CheckScanner.Web/wwwroot/css/
+src/CheckScanner.Web/wwwroot/js/
+src/CheckScanner.Web/photo-storage/
