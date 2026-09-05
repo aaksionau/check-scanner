@@ -45,18 +45,17 @@ public sealed class ReceiptUploadService(
     private async Task<Receipt> BuildReceiptAsync(
         IReadOnlyList<ReceiptPhoto> uploadedPhotos, DateTimeOffset now, CancellationToken cancellationToken)
     {
-        Receipt NewReceipt(ReceiptStatus status, string? storeName, DateTimeOffset? purchasedAt, decimal? total, IReadOnlyList<ReceiptLineItem> lineItems) =>
-            new()
-            {
-                Id = Guid.NewGuid(),
-                StoreName = storeName,
-                PurchasedAt = purchasedAt,
-                Total = total,
-                Status = status,
-                CreatedAt = now,
-                Photos = uploadedPhotos,
-                LineItems = lineItems
-            };
+        var receipt = new Receipt
+        {
+            Id = Guid.NewGuid(),
+            StoreName = null,
+            PurchasedAt = null,
+            Total = null,
+            Status = ReceiptStatus.ParseFailed,
+            CreatedAt = now,
+            Photos = uploadedPhotos,
+            LineItems = []
+        };
 
         try
         {
@@ -76,17 +75,22 @@ public sealed class ReceiptUploadService(
                 })
                 .ToList();
 
-            var isFlagged = ReceiptReconciler.Reconcile(parsed.Total, lineItems);
+            var status = ReceiptReconciler.DetermineStatus(parsed.Total, lineItems);
 
-            return NewReceipt(
-                isFlagged ? ReceiptStatus.Flagged : ReceiptStatus.Parsed,
-                parsed.StoreName, parsed.PurchasedAt, parsed.Total, lineItems);
+            return receipt with
+            {
+                Status = status,
+                StoreName = parsed.StoreName,
+                PurchasedAt = parsed.PurchasedAt,
+                Total = parsed.Total,
+                LineItems = lineItems
+            };
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to parse uploaded receipt photos.");
 
-            return NewReceipt(ReceiptStatus.ParseFailed, storeName: null, purchasedAt: null, total: null, lineItems: []);
+            return receipt;
         }
     }
 }

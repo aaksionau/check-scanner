@@ -19,6 +19,7 @@ CREATE INDEX IF NOT EXISTS ix_receipt_photos_receipt_id ON receipt_photos (recei
 CREATE TABLE IF NOT EXISTS receipt_line_items (
     id UUID PRIMARY KEY,
     receipt_id UUID NOT NULL REFERENCES receipts (id) ON DELETE CASCADE,
+    position INT NOT NULL DEFAULT 0,
     raw_text TEXT NOT NULL,
     description TEXT NOT NULL,
     category TEXT NOT NULL,
@@ -26,5 +27,8 @@ CREATE TABLE IF NOT EXISTS receipt_line_items (
     unit_price NUMERIC NOT NULL,
     line_total NUMERIC NOT NULL
 );
+
+-- Additive migration for databases created before `position` existed.
+ALTER TABLE receipt_line_items ADD COLUMN IF NOT EXISTS position INT NOT NULL DEFAULT 0;
 
 CREATE INDEX IF NOT EXISTS ix_receipt_line_items_receipt_id ON receipt_line_items (receipt_id);

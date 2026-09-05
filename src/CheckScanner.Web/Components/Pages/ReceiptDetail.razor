@@ -1,0 +1,158 @@
+@page "/receipts/{Id:guid}"
+@rendermode InteractiveServer
+@using CheckScanner.Application.Dtos
+@using CheckScanner.Domain.Enums
+@inject CheckScanner.Application.Services.ReceiptReviewService ReviewService
+@inject NavigationManager Nav
+
+<PageTitle>Receipt</PageTitle>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col gap-4 px-4 py-6 sm:px-6">
+    @if (_notFound)
+    {
+        <p class="text-sm text-slate-500">Receipt not found.</p>
+    }
+    else if (_receipt is null)
+    {
+        <p class="text-sm text-slate-500">Loading…</p>
+    }
+    else
+    {
+        <div class="flex items-center justify-between gap-2">
+            <div>
+                <h1 class="text-lg font-semibold text-slate-900">@ReceiptDisplayFormat.StoreName(_receipt.StoreName)</h1>
+                <p class="text-xs text-slate-500">@ReceiptDisplayFormat.PurchasedAt(_receipt.PurchasedAt)</p>
+            </div>
+            @if (_receipt.Status == ReceiptStatus.Flagged)
+            {
+                <span class="shrink-0 rounded-full bg-amber-100 px-2 py-1 text-xs font-medium text-amber-800">Needs review</span>
+            }
+        </div>
+
+        @if (_receipt.Photos.Count > 0)
+        {
+            <div class="grid grid-cols-2 gap-2">
+                @foreach (var photo in _receipt.Photos)
+                {
+                    <img src="/photos/@photo.StoragePath" alt="Receipt photo" class="h-40 w-full rounded-lg border border-slate-200 object-cover" />
+                }
+            </div>
+        }
+
+        <div class="flex flex-col gap-2">
+            <h2 class="text-sm font-semibold text-slate-900">Line items</h2>
+            @foreach (var item in _lineItems)
+            {
+                <div class="flex flex-col gap-2 rounded-lg border border-slate-200 bg-white p-3">
+                    <input
+                        @bind="item.Description"
+                        placeholder="Product"
+                        class="w-full rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                    <div class="grid grid-cols-2 gap-2">
+                        <input
+                            @bind="item.Category"
+                            placeholder="Category"
+                            class="rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                        <input
+                            type="number" step="0.01"
+                            @bind="item.Quantity"
+                            placeholder="Qty"
+                            class="rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                        <input
+                            type="number" step="0.01"
+                            @bind="item.UnitPrice"
+                            placeholder="Unit price"
+                            class="rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                        <input
+                            type="number" step="0.01"
+                            @bind="item.LineTotal"
+                            placeholder="Line total"
+                            class="rounded-md border border-slate-300 px-2 py-1 text-sm" />
+                    </div>
+                    <button
+                        type="button"
+                        class="self-end text-xs font-medium text-red-600"
+                        @onclick="() => RemoveLine(item)">
+                        Remove
+                    </button>
+                </div>
+            }
+            <button
+                type="button"
+                class="rounded-lg border border-dashed border-slate-300 px-4 py-2 text-sm text-slate-600 hover:border-slate-400"
+                @onclick="AddLine">
+                + Add line item
+            </button>
+        </div>
+
+        <label class="flex items-center justify-between gap-2 text-sm font-medium text-slate-900">
+            Printed total
+            <input
+                type="number" step="0.01"
+                @bind="_total"
+                class="w-32 rounded-md border border-slate-300 px-2 py-1 text-right text-sm" />
+        </label>
+
+        @if (_lastSaveStatus is { } lastSaveStatus)
+        {
+            <p class="text-sm @(lastSaveStatus == ReceiptStatus.Flagged ? "text-amber-700" : "text-emerald-700")">
+                @(lastSaveStatus == ReceiptStatus.Flagged
+                    ? "Saved, but it still doesn't reconcile — left flagged for review."
+                    : "Saved and reconciled.")
+            </p>
+        }
+
+        <button
+            type="button"
+            class="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+            disabled="@_isSaving"
+            @onclick="SaveAsync">
+            @(_isSaving ? "Saving…" : "Save")
+        </button>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public Guid Id { get; set; }
+
+    private Domain.Entities.Receipt? _receipt;
+    private List<ReceiptLineItemEditDto> _lineItems = [];
+    private decimal? _total;
+    private bool _isSaving;
+    private bool _notFound;
+    private ReceiptStatus? _lastSaveStatus;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var receipt = await ReviewService.GetByIdAsync(Id, CancellationToken.None);
+        if (receipt is null)
+        {
+            _notFound = true;
+            return;
+        }
+
+        _receipt = receipt;
+        _total = receipt.Total;
+        _lineItems = receipt.LineItems.Select(ReceiptLineItemEditDto.FromEntity).ToList();
+    }
+
+    private void AddLine() => _lineItems.Add(new ReceiptLineItemEditDto());
+
+    private void RemoveLine(ReceiptLineItemEditDto item) => _lineItems.Remove(item);
+
+    private async Task SaveAsync()
+    {
+        _isSaving = true;
+        _lastSaveStatus = null;
+
+        var (status, savedLineItems) = await ReviewService.SaveAsync(Id, _total, _lineItems, CancellationToken.None);
+
+        _lineItems = savedLineItems.Select(ReceiptLineItemEditDto.FromEntity).ToList();
+        _receipt = _receipt is null
+            ? null
+            : _receipt with { Total = _total, Status = status, LineItems = savedLineItems };
+        _lastSaveStatus = status;
+        _isSaving = false;
+    }
+}

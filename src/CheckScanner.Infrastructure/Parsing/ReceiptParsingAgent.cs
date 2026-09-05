@@ -1,5 +1,6 @@
 using CheckScanner.Application.Dtos;
 using CheckScanner.Application.Interfaces;
+using CheckScanner.Infrastructure.Storage;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
@@ -44,7 +45,7 @@ public sealed class ReceiptParsingAgent : IReceiptParser
         };
         for (var i = 0; i < photoStoragePaths.Count; i++)
         {
-            contents.Add(new DataContent(photoBytes[i], MimeTypeFor(photoStoragePaths[i])));
+            contents.Add(new DataContent(photoBytes[i], PhotoContentType.Resolve(photoStoragePaths[i])));
         }
 
         var message = new ChatMessage(ChatRole.User, contents);
@@ -59,13 +60,4 @@ public sealed class ReceiptParsingAgent : IReceiptParser
         await stream.CopyToAsync(buffer, cancellationToken);
         return buffer.ToArray();
     }
-
-    private static string MimeTypeFor(string path) => Path.GetExtension(path).ToLowerInvariant() switch
-    {
-        ".png" => "image/png",
-        ".gif" => "image/gif",
-        ".webp" => "image/webp",
-        ".heic" => "image/heic",
-        _ => "image/jpeg"
-    };
 }
