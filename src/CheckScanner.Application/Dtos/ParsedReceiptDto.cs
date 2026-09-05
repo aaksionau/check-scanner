@@ -1,10 +1,6 @@
 namespace CheckScanner.Application.Dtos;
 
-/// <summary>
-/// Shape a future IReceiptParser implementation will return. Not produced or
-/// consumed by anything yet -- it exists so the interface below has a
-/// concrete return type to define against.
-/// </summary>
+/// <summary>Structured output an IReceiptParser implementation binds a vision-LLM response into.</summary>
 public sealed record ParsedReceiptDto(
     string? StoreName,
     DateTimeOffset? PurchasedAt,
@@ -12,7 +8,9 @@ public sealed record ParsedReceiptDto(
     IReadOnlyList<ParsedLineItemDto> LineItems);
 
 public sealed record ParsedLineItemDto(
+    string RawText,
     string Description,
+    string Category,
     decimal Quantity,
     decimal UnitPrice,
     decimal LineTotal);

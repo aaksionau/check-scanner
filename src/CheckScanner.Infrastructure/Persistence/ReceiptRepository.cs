@@ -50,6 +50,29 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
                     cancellationToken: cancellationToken));
         }
 
+        foreach (var lineItem in receipt.LineItems)
+        {
+            await connection.ExecuteAsync(
+                new CommandDefinition(
+                    """
+                    INSERT INTO receipt_line_items (id, receipt_id, raw_text, description, category, quantity, unit_price, line_total)
+                    VALUES (@Id, @ReceiptId, @RawText, @Description, @Category, @Quantity, @UnitPrice, @LineTotal)
+                    """,
+                    new
+                    {
+                        lineItem.Id,
+                        ReceiptId = receipt.Id,
+                        lineItem.RawText,
+                        lineItem.Description,
+                        lineItem.Category,
+                        lineItem.Quantity,
+                        lineItem.UnitPrice,
+                        lineItem.LineTotal
+                    },
+                    transaction,
+                    cancellationToken: cancellationToken));
+        }
+
         await transaction.CommitAsync(cancellationToken);
         return receipt.Id;
     }
@@ -88,6 +111,8 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
                 Status = Enum.Parse<ReceiptStatus>(r.Status),
                 CreatedAt = AsUtcOffset(r.CreatedAt)!.Value,
                 Photos = photosByReceipt.GetValueOrDefault(r.Id, []),
+                // Not loaded here -- the Receipts list page doesn't need line items.
+                // A GetByIdAsync that does is a follow-up slice for the detail page.
                 LineItems = []
             })
             .ToList();

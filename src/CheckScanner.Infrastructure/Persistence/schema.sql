@@ -19,7 +19,9 @@ CREATE INDEX IF NOT EXISTS ix_receipt_photos_receipt_id ON receipt_photos (recei
 CREATE TABLE IF NOT EXISTS receipt_line_items (
     id UUID PRIMARY KEY,
     receipt_id UUID NOT NULL REFERENCES receipts (id) ON DELETE CASCADE,
+    raw_text TEXT NOT NULL,
     description TEXT NOT NULL,
+    category TEXT NOT NULL,
     quantity NUMERIC NOT NULL,
     unit_price NUMERIC NOT NULL,
     line_total NUMERIC NOT NULL

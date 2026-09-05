@@ -20,4 +20,10 @@ public sealed class FileSystemPhotoStore(IOptions<PhotoStorageOptions> options) 
 
         return storedFileName;
     }
+
+    public Task<Stream> OpenReadAsync(string storagePath, CancellationToken cancellationToken)
+    {
+        var fullPath = Path.Combine(options.Value.BasePath, storagePath);
+        return Task.FromResult<Stream>(File.OpenRead(fullPath));
+    }
 }

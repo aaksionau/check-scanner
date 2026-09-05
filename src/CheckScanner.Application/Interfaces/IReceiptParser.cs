@@ -3,9 +3,8 @@ using CheckScanner.Application.Dtos;
 namespace CheckScanner.Application.Interfaces;
 
 /// <summary>
-/// Seam for the vision-model line-item parser (Azure AI Foundry gpt-4o-mini).
-/// No implementation exists yet -- this walking skeleton only defines the
-/// shape a later slice will build against.
+/// Parses 1..N photos -- ordered segments of one logical receipt -- into
+/// structured line items via a vision-capable LLM (Azure AI Foundry gpt-4o-mini).
 /// </summary>
 public interface IReceiptParser
 {
