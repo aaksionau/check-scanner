@@ -98,7 +98,7 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
         return ToReceipt(row, photos, lineItems);
     }
 
-    public async Task<IReadOnlyList<Receipt>> GetFlaggedAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Receipt>> GetNeedsReviewAsync(CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
 
@@ -107,7 +107,7 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
                 $"""
                 SELECT {ReceiptColumns}
                 FROM receipts
-                WHERE status = 'Flagged'
+                WHERE status IN ('Flagged', 'ParseFailed')
                 ORDER BY created_at DESC
                 """,
                 cancellationToken: cancellationToken))).ToList();

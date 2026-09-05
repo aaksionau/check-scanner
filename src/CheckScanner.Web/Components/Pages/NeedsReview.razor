@@ -1,5 +1,6 @@
 @page "/needs-review"
 @rendermode InteractiveServer
+@using CheckScanner.Domain.Enums
 @inject CheckScanner.Application.Services.ReceiptReviewService ReviewService
 
 <PageTitle>Needs Review</PageTitle>
@@ -21,14 +22,21 @@
             @foreach (var receipt in _receipts)
             {
                 <li>
-                    <a href="/receipts/@receipt.Id" class="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                    <a href="/receipts/@receipt.Id" class="flex items-center justify-between rounded-lg border px-4 py-3 @(receipt.Status == ReceiptStatus.ParseFailed ? "border-rose-200 bg-rose-50" : "border-amber-200 bg-amber-50")">
                         <div>
                             <p class="text-sm font-medium text-slate-900">@ReceiptDisplayFormat.StoreName(receipt.StoreName)</p>
                             <p class="text-xs text-slate-500">@ReceiptDisplayFormat.PurchasedAt(receipt.PurchasedAt)</p>
                         </div>
-                        <p class="text-sm font-semibold text-amber-800">
-                            @(receipt.MismatchAmount is { } mismatch ? $"Off by {mismatch:C}" : "No printed total")
-                        </p>
+                        @if (receipt.Status == ReceiptStatus.ParseFailed)
+                        {
+                            <p class="text-sm font-semibold text-rose-800">Parsing failed — enter manually</p>
+                        }
+                        else
+                        {
+                            <p class="text-sm font-semibold text-amber-800">
+                                @(receipt.MismatchAmount is { } mismatch ? $"Off by {mismatch:C}" : "No printed total")
+                            </p>
+                        }
                     </a>
                 </li>
             }
@@ -37,10 +45,10 @@
 </div>
 
 @code {
-    private IReadOnlyList<CheckScanner.Application.Dtos.FlaggedReceiptDto>? _receipts;
+    private IReadOnlyList<CheckScanner.Application.Dtos.NeedsReviewReceiptDto>? _receipts;
 
     protected override async Task OnInitializedAsync()
     {
-        _receipts = await ReviewService.GetFlaggedAsync(CancellationToken.None);
+        _receipts = await ReviewService.GetNeedsReviewAsync(CancellationToken.None);
     }
 }

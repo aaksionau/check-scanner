@@ -8,16 +8,16 @@ namespace CheckScanner.Application.Services;
 
 /// <summary>
 /// Backs the Needs Review list and the receipt detail/edit view: surfaces
-/// flagged receipts, loads a single receipt for editing, and re-reconciles
-/// on save.
+/// receipts that are flagged or failed to parse, loads a single receipt for
+/// editing, and re-reconciles on save.
 /// </summary>
 public sealed class ReceiptReviewService(IReceiptRepository receiptRepository)
 {
-    public async Task<IReadOnlyList<FlaggedReceiptDto>> GetFlaggedAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<NeedsReviewReceiptDto>> GetNeedsReviewAsync(CancellationToken cancellationToken)
     {
-        var receipts = await receiptRepository.GetFlaggedAsync(cancellationToken);
+        var receipts = await receiptRepository.GetNeedsReviewAsync(cancellationToken);
         return receipts
-            .Select(r => new FlaggedReceiptDto(r.Id, r.StoreName, r.PurchasedAt, r.Total, r.LineItems.Sum(li => li.LineTotal)))
+            .Select(r => new NeedsReviewReceiptDto(r.Id, r.StoreName, r.PurchasedAt, r.Total, r.LineItems.Sum(li => li.LineTotal), r.Status))
             .ToList();
     }
 
