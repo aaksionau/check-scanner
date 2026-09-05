@@ -35,14 +35,16 @@ public sealed class ReceiptParsingAgent : IReceiptParser
 
     public async Task<ParsedReceiptDto> ParseAsync(IReadOnlyList<string> photoStoragePaths, CancellationToken cancellationToken)
     {
+        var photoBytes = await Task.WhenAll(
+            photoStoragePaths.Select(path => ReadAllBytesAsync(path, cancellationToken)));
+
         var contents = new List<AIContent>
         {
             new TextContent("Extract the structured receipt data from the following photo(s), in order.")
         };
-
-        foreach (var path in photoStoragePaths)
+        for (var i = 0; i < photoStoragePaths.Count; i++)
         {
-            contents.Add(new DataContent(await ReadAllBytesAsync(path, cancellationToken), MimeTypeFor(path)));
+            contents.Add(new DataContent(photoBytes[i], MimeTypeFor(photoStoragePaths[i])));
         }
 
         var message = new ChatMessage(ChatRole.User, contents);

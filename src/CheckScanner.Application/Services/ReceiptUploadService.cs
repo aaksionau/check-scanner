@@ -45,6 +45,19 @@ public sealed class ReceiptUploadService(
     private async Task<Receipt> BuildReceiptAsync(
         IReadOnlyList<ReceiptPhoto> uploadedPhotos, DateTimeOffset now, CancellationToken cancellationToken)
     {
+        Receipt NewReceipt(ReceiptStatus status, string? storeName, DateTimeOffset? purchasedAt, decimal? total, IReadOnlyList<ReceiptLineItem> lineItems) =>
+            new()
+            {
+                Id = Guid.NewGuid(),
+                StoreName = storeName,
+                PurchasedAt = purchasedAt,
+                Total = total,
+                Status = status,
+                CreatedAt = now,
+                Photos = uploadedPhotos,
+                LineItems = lineItems
+            };
+
         try
         {
             var parsed = await receiptParser.ParseAsync(
@@ -65,33 +78,15 @@ public sealed class ReceiptUploadService(
 
             var isFlagged = ReceiptReconciler.Reconcile(parsed.Total, lineItems);
 
-            return new Receipt
-            {
-                Id = Guid.NewGuid(),
-                StoreName = parsed.StoreName,
-                PurchasedAt = parsed.PurchasedAt,
-                Total = parsed.Total,
-                Status = isFlagged ? ReceiptStatus.Flagged : ReceiptStatus.Parsed,
-                CreatedAt = now,
-                Photos = uploadedPhotos,
-                LineItems = lineItems
-            };
+            return NewReceipt(
+                isFlagged ? ReceiptStatus.Flagged : ReceiptStatus.Parsed,
+                parsed.StoreName, parsed.PurchasedAt, parsed.Total, lineItems);
         }
         catch (Exception ex)
         {
             logger.LogWarning(ex, "Failed to parse uploaded receipt photos.");
 
-            return new Receipt
-            {
-                Id = Guid.NewGuid(),
-                StoreName = null,
-                PurchasedAt = null,
-                Total = null,
-                Status = ReceiptStatus.ParseFailed,
-                CreatedAt = now,
-                Photos = uploadedPhotos,
-                LineItems = []
-            };
+            return NewReceipt(ReceiptStatus.ParseFailed, storeName: null, purchasedAt: null, total: null, lineItems: []);
         }
     }
 }

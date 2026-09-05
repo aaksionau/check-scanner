@@ -36,7 +36,7 @@ public static class DependencyInjection
                 .GetChatClient(options.DeploymentName)
                 .AsIChatClient();
         });
-        services.AddScoped<IReceiptParser, ReceiptParsingAgent>();
+        services.AddSingleton<IReceiptParser, ReceiptParsingAgent>();
 
         return services;
     }
