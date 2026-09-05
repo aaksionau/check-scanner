@@ -1,10 +1,15 @@
+using Azure;
+using Azure.AI.OpenAI;
 using CheckScanner.Application.Interfaces;
 using CheckScanner.Infrastructure.Options;
+using CheckScanner.Infrastructure.Parsing;
 using CheckScanner.Infrastructure.Persistence;
 using CheckScanner.Infrastructure.Storage;
+using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Npgsql;
 
 namespace CheckScanner.Infrastructure;
@@ -22,6 +27,16 @@ public static class DependencyInjection
 
         services.Configure<PhotoStorageOptions>(configuration.GetSection(PhotoStorageOptions.SectionName));
         services.AddSingleton<IPhotoStore, FileSystemPhotoStore>();
+
+        services.Configure<FoundryOptions>(configuration.GetSection(FoundryOptions.SectionName));
+        services.AddSingleton<IChatClient>(sp =>
+        {
+            var options = sp.GetRequiredService<IOptions<FoundryOptions>>().Value;
+            return new AzureOpenAIClient(new Uri(options.Endpoint), new AzureKeyCredential(options.ApiKey))
+                .GetChatClient(options.DeploymentName)
+                .AsIChatClient();
+        });
+        services.AddSingleton<IReceiptParser, ReceiptParsingAgent>();
 
         return services;
     }

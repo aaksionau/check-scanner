@@ -8,4 +8,7 @@ namespace CheckScanner.Application.Interfaces;
 public interface IPhotoStore
 {
     Task<string> SaveAsync(string fileName, Stream content, CancellationToken cancellationToken);
+
+    /// <summary>Reopens a previously-saved photo by the path <see cref="SaveAsync"/> returned.</summary>
+    Task<Stream> OpenReadAsync(string storagePath, CancellationToken cancellationToken);
 }

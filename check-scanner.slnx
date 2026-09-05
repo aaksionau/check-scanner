@@ -5,4 +5,8 @@
     <Project Path="src/CheckScanner.Infrastructure/CheckScanner.Infrastructure.csproj" />
     <Project Path="src/CheckScanner.Web/CheckScanner.Web.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/CheckScanner.Domain.Tests/CheckScanner.Domain.Tests.csproj" />
+    <Project Path="tests/CheckScanner.Infrastructure.Tests/CheckScanner.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>

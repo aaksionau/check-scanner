@@ -1,15 +1,21 @@
 using CheckScanner.Application.Interfaces;
+using CheckScanner.Domain;
 using CheckScanner.Domain.Entities;
 using CheckScanner.Domain.Enums;
+using Microsoft.Extensions.Logging;
 
 namespace CheckScanner.Application.Services;
 
 /// <summary>
-/// Single entry point for the Upload page: saves each photo's bytes, then
-/// persists one Receipt row (no line items -- real parsing is a follow-up
-/// slice) linking all of them together.
+/// Single entry point for the Upload page: saves each photo's bytes, parses
+/// them into line items, reconciles the result against the printed total, and
+/// persists one Receipt row linking all of it together.
 /// </summary>
-public sealed class ReceiptUploadService(IPhotoStore photoStore, IReceiptRepository receiptRepository)
+public sealed class ReceiptUploadService(
+    IPhotoStore photoStore,
+    IReceiptParser receiptParser,
+    IReceiptRepository receiptRepository,
+    ILogger<ReceiptUploadService> logger)
 {
     public async Task<Guid> UploadAsync(
         IReadOnlyList<(string FileName, Stream Content)> photos, CancellationToken cancellationToken)
@@ -32,18 +38,55 @@ public sealed class ReceiptUploadService(IPhotoStore photoStore, IReceiptReposit
             });
         }
 
-        var receipt = new Receipt
-        {
-            Id = Guid.NewGuid(),
-            StoreName = null,
-            PurchasedAt = null,
-            Total = null,
-            Status = ReceiptStatus.Uploaded,
-            CreatedAt = now,
-            Photos = uploadedPhotos,
-            LineItems = []
-        };
-
+        var receipt = await BuildReceiptAsync(uploadedPhotos, now, cancellationToken);
         return await receiptRepository.AddAsync(receipt, cancellationToken);
+    }
+
+    private async Task<Receipt> BuildReceiptAsync(
+        IReadOnlyList<ReceiptPhoto> uploadedPhotos, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        Receipt NewReceipt(ReceiptStatus status, string? storeName, DateTimeOffset? purchasedAt, decimal? total, IReadOnlyList<ReceiptLineItem> lineItems) =>
+            new()
+            {
+                Id = Guid.NewGuid(),
+                StoreName = storeName,
+                PurchasedAt = purchasedAt,
+                Total = total,
+                Status = status,
+                CreatedAt = now,
+                Photos = uploadedPhotos,
+                LineItems = lineItems
+            };
+
+        try
+        {
+            var parsed = await receiptParser.ParseAsync(
+                uploadedPhotos.Select(p => p.StoragePath).ToList(), cancellationToken);
+
+            var lineItems = parsed.LineItems
+                .Select(item => new ReceiptLineItem
+                {
+                    Id = Guid.NewGuid(),
+                    RawText = item.RawText,
+                    Description = item.Description,
+                    Category = item.Category,
+                    Quantity = item.Quantity,
+                    UnitPrice = item.UnitPrice,
+                    LineTotal = item.LineTotal
+                })
+                .ToList();
+
+            var isFlagged = ReceiptReconciler.Reconcile(parsed.Total, lineItems);
+
+            return NewReceipt(
+                isFlagged ? ReceiptStatus.Flagged : ReceiptStatus.Parsed,
+                parsed.StoreName, parsed.PurchasedAt, parsed.Total, lineItems);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Failed to parse uploaded receipt photos.");
+
+            return NewReceipt(ReceiptStatus.ParseFailed, storeName: null, purchasedAt: null, total: null, lineItems: []);
+        }
     }
 }
