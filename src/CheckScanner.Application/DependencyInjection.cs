@@ -8,6 +8,7 @@ public static class DependencyInjection
     public static IServiceCollection AddCheckScannerApplication(this IServiceCollection services)
     {
         services.AddScoped<ReceiptUploadService>();
+        services.AddScoped<ReceiptReviewService>();
         return services;
     }
 }
