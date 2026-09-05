@@ -208,12 +208,12 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
         {
             Id = row.Id,
             StoreName = row.StoreName,
-            PurchasedAt = AsUtcOffset(row.PurchasedAt),
+            PurchasedAt = PostgresTimestamp.ToUtcOffset(row.PurchasedAt),
             Total = row.Total,
             Status = Enum.Parse<ReceiptStatus>(row.Status),
-            CreatedAt = AsUtcOffset(row.CreatedAt)!.Value,
+            CreatedAt = PostgresTimestamp.ToUtcOffset(row.CreatedAt)!.Value,
             Photos = photos
-                .Select(p => new ReceiptPhoto { Id = p.Id, StoragePath = p.StoragePath, UploadedAt = AsUtcOffset(p.UploadedAt)!.Value })
+                .Select(p => new ReceiptPhoto { Id = p.Id, StoragePath = p.StoragePath, UploadedAt = PostgresTimestamp.ToUtcOffset(p.UploadedAt)!.Value })
                 .ToList(),
             LineItems = lineItems
                 .Select(l => new ReceiptLineItem
@@ -254,13 +254,6 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
             .Select(r => ToReceipt(r, photosByReceipt.GetValueOrDefault(r.Id, []), []))
             .ToList();
     }
-
-    // Npgsql maps `timestamptz` to plain DateTime (Kind=Utc) by default, not
-    // DateTimeOffset -- Dapper's constructor-based materialization can't
-    // implicitly convert between the two, so the *Row types below stay in
-    // DateTime and get converted here instead.
-    private static DateTimeOffset? AsUtcOffset(DateTime? value) =>
-        value is null ? null : new DateTimeOffset(DateTime.SpecifyKind(value.Value, DateTimeKind.Utc));
 
     // Dapper materializes these via reflection (public settable properties),
     // not the constructor -- that's the path that tolerates the

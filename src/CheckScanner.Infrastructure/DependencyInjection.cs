@@ -24,6 +24,7 @@ public static class DependencyInjection
         services.AddSingleton(NpgsqlDataSource.Create(connectionString));
 
         services.AddScoped<IReceiptRepository, ReceiptRepository>();
+        services.AddScoped<IPriceHistoryQueryService, PriceHistoryQueryService>();
 
         services.Configure<PhotoStorageOptions>(configuration.GetSection(PhotoStorageOptions.SectionName));
         services.AddSingleton<IPhotoStore, FileSystemPhotoStore>();
