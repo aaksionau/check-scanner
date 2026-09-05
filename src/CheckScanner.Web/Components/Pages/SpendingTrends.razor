@@ -1,0 +1,109 @@
+@page "/spending-trends"
+@rendermode InteractiveServer
+@using CheckScanner.Application.Dtos
+@using CheckScanner.Web.Components.Shared
+@inject CheckScanner.Application.Services.SpendingTrendsService SpendingTrendsService
+
+<PageTitle>Spending Trends</PageTitle>
+
+<div class="mx-auto flex w-full max-w-md flex-1 flex-col gap-6 px-4 py-6 sm:px-6">
+    <h1 class="text-lg font-semibold text-slate-900">Spending Trends</h1>
+
+    @if (_categorySpend is null || _topItems is null)
+    {
+        <p class="text-sm text-slate-500">Loading…</p>
+    }
+    else
+    {
+        <section class="flex flex-col gap-2">
+            <h2 class="text-sm font-medium text-slate-900">Spend by category, per month</h2>
+
+            @if (_categorySpend.Count == 0)
+            {
+                <p class="text-sm text-slate-500">No dated purchases yet — upload a receipt first.</p>
+            }
+            else if (_chart is not null)
+            {
+                <div class="rounded-lg border border-slate-200 bg-white p-3">
+                    <svg
+                        viewBox="0 0 @SpendingTrendsChartBuilder.Width @SpendingTrendsChartBuilder.Height"
+                        class="w-full" preserveAspectRatio="xMidYMid meet">
+                        @foreach (var bar in _chart.Bars)
+                        {
+                            @foreach (var segment in bar.Segments)
+                            {
+                                <rect
+                                    x="@bar.X.ToString("F1")"
+                                    y="@segment.Y.ToString("F1")"
+                                    width="@bar.Width.ToString("F1")"
+                                    height="@segment.Height.ToString("F1")"
+                                    fill="@segment.Color">
+                                    <title>@segment.Category: @segment.Amount.ToString("C")</title>
+                                </rect>
+                            }
+                        }
+                    </svg>
+                    <div class="mt-1 flex justify-between text-[11px] text-slate-400">
+                        @foreach (var bar in _chart.Bars)
+                        {
+                            <span>@bar.MonthLabel</span>
+                        }
+                    </div>
+                </div>
+
+                <ul class="flex flex-wrap gap-x-4 gap-y-1">
+                    @foreach (var entry in _chart.Legend)
+                    {
+                        <li class="flex items-center gap-1.5 text-xs text-slate-600">
+                            <span class="h-2 w-2 rounded-full" style="background-color: @entry.Color"></span>
+                            @entry.Category
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+
+        <section class="flex flex-col gap-2">
+            <h2 class="text-sm font-medium text-slate-900">Top items by total spend</h2>
+
+            @if (_topItems.Count == 0)
+            {
+                <p class="text-sm text-slate-500">No line items yet — upload a receipt first.</p>
+            }
+            else
+            {
+                var maxSpend = _topItems[0].TotalSpend;
+                <ul class="flex flex-col gap-2">
+                    @foreach (var (item, rank) in _topItems.Select((item, i) => (item, i + 1)))
+                    {
+                        var widthPercent = maxSpend == 0 ? 0 : (double)(item.TotalSpend / maxSpend) * 100;
+                        <li class="flex flex-col gap-1 rounded-lg border border-slate-200 bg-white p-3">
+                            <div class="flex items-center justify-between text-sm">
+                                <span class="font-medium text-slate-900">@rank. @item.Description</span>
+                                <span class="font-semibold text-slate-900">@item.TotalSpend.ToString("C")</span>
+                            </div>
+                            <div class="h-2 w-full rounded-full bg-slate-100">
+                                <div class="h-2 rounded-full bg-slate-400" style="width: @(widthPercent.ToString("F1"))%"></div>
+                            </div>
+                        </li>
+                    }
+                </ul>
+            }
+        </section>
+    }
+</div>
+
+@code {
+    private const int TopItemCount = 10;
+
+    private IReadOnlyList<CategoryMonthSpendDto>? _categorySpend;
+    private IReadOnlyList<TopItemSpendDto>? _topItems;
+    private SpendingTrendsChartBuilder.ChartResult? _chart;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _categorySpend = await SpendingTrendsService.GetCategorySpendByMonthAsync(CancellationToken.None);
+        _topItems = await SpendingTrendsService.GetTopItemsBySpendAsync(TopItemCount, CancellationToken.None);
+        _chart = _categorySpend.Count > 0 ? SpendingTrendsChartBuilder.Build(_categorySpend) : null;
+    }
+}
