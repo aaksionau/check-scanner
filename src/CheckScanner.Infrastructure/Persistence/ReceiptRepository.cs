@@ -8,6 +8,9 @@ namespace CheckScanner.Infrastructure.Persistence;
 
 public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRepository
 {
+    private const string ReceiptColumns =
+        "id, store_name AS StoreName, purchased_at AS PurchasedAt, total, status, created_at AS CreatedAt";
+
     public async Task<Guid> AddAsync(Receipt receipt, CancellationToken cancellationToken)
     {
         await using var connection = await dataSource.OpenConnectionAsync(cancellationToken);
@@ -62,8 +65,8 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
 
         var row = await connection.QuerySingleOrDefaultAsync<ReceiptRow>(
             new CommandDefinition(
-                """
-                SELECT id, store_name AS StoreName, purchased_at AS PurchasedAt, total, status, created_at AS CreatedAt
+                $"""
+                SELECT {ReceiptColumns}
                 FROM receipts
                 WHERE id = @Id
                 """,
@@ -101,8 +104,8 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
 
         var receiptRows = (await connection.QueryAsync<ReceiptRow>(
             new CommandDefinition(
-                """
-                SELECT id, store_name AS StoreName, purchased_at AS PurchasedAt, total, status, created_at AS CreatedAt
+                $"""
+                SELECT {ReceiptColumns}
                 FROM receipts
                 WHERE status = 'Flagged'
                 ORDER BY created_at DESC
@@ -111,12 +114,7 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
 
         var ids = receiptRows.Select(r => r.Id).ToArray();
 
-        var photoRows = await connection.QueryAsync<PhotoRow>(
-            new CommandDefinition(
-                "SELECT id, receipt_id AS ReceiptId, storage_path AS StoragePath, uploaded_at AS UploadedAt FROM receipt_photos WHERE receipt_id = ANY(@Ids)",
-                new { Ids = ids },
-                cancellationToken: cancellationToken));
-
+        // Photos aren't loaded here -- the Needs Review list doesn't need them.
         var lineItemRows = await connection.QueryAsync<LineItemRow>(
             new CommandDefinition(
                 """
@@ -128,14 +126,10 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
                 new { Ids = ids },
                 cancellationToken: cancellationToken));
 
-        var photosByReceipt = photoRows.GroupBy(p => p.ReceiptId).ToDictionary(g => g.Key, g => g.ToList());
         var lineItemsByReceipt = lineItemRows.GroupBy(l => l.ReceiptId).ToDictionary(g => g.Key, g => g.ToList());
 
         return receiptRows
-            .Select(r => ToReceipt(
-                r,
-                photosByReceipt.GetValueOrDefault(r.Id, []),
-                lineItemsByReceipt.GetValueOrDefault(r.Id, [])))
+            .Select(r => ToReceipt(r, [], lineItemsByReceipt.GetValueOrDefault(r.Id, [])))
             .ToList();
     }
 
@@ -168,37 +162,45 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
         await transaction.CommitAsync(cancellationToken);
     }
 
-    private static async Task InsertLineItemsAsync(
+    private static Task InsertLineItemsAsync(
         NpgsqlConnection connection,
         NpgsqlTransaction transaction,
         Guid receiptId,
         IReadOnlyList<ReceiptLineItem> lineItems,
         CancellationToken cancellationToken)
     {
+        if (lineItems.Count == 0)
+        {
+            return Task.CompletedTask;
+        }
+
+        var parameters = new DynamicParameters();
+        var valueRows = new string[lineItems.Count];
         for (var position = 0; position < lineItems.Count; position++)
         {
             var lineItem = lineItems[position];
-            await connection.ExecuteAsync(
-                new CommandDefinition(
-                    """
-                    INSERT INTO receipt_line_items (id, receipt_id, position, raw_text, description, category, quantity, unit_price, line_total)
-                    VALUES (@Id, @ReceiptId, @Position, @RawText, @Description, @Category, @Quantity, @UnitPrice, @LineTotal)
-                    """,
-                    new
-                    {
-                        lineItem.Id,
-                        ReceiptId = receiptId,
-                        Position = position,
-                        lineItem.RawText,
-                        lineItem.Description,
-                        lineItem.Category,
-                        lineItem.Quantity,
-                        lineItem.UnitPrice,
-                        lineItem.LineTotal
-                    },
-                    transaction,
-                    cancellationToken: cancellationToken));
+            valueRows[position] =
+                $"(@Id{position}, @ReceiptId{position}, @Position{position}, @RawText{position}, @Description{position}, @Category{position}, @Quantity{position}, @UnitPrice{position}, @LineTotal{position})";
+            parameters.Add($"Id{position}", lineItem.Id);
+            parameters.Add($"ReceiptId{position}", receiptId);
+            parameters.Add($"Position{position}", position);
+            parameters.Add($"RawText{position}", lineItem.RawText);
+            parameters.Add($"Description{position}", lineItem.Description);
+            parameters.Add($"Category{position}", lineItem.Category);
+            parameters.Add($"Quantity{position}", lineItem.Quantity);
+            parameters.Add($"UnitPrice{position}", lineItem.UnitPrice);
+            parameters.Add($"LineTotal{position}", lineItem.LineTotal);
         }
+
+        return connection.ExecuteAsync(
+            new CommandDefinition(
+                $"""
+                INSERT INTO receipt_line_items (id, receipt_id, position, raw_text, description, category, quantity, unit_price, line_total)
+                VALUES {string.Join(", ", valueRows)}
+                """,
+                parameters,
+                transaction,
+                cancellationToken: cancellationToken));
     }
 
     private static Receipt ToReceipt(ReceiptRow row, IEnumerable<PhotoRow> photos, IEnumerable<LineItemRow> lineItems) =>
@@ -233,8 +235,8 @@ public sealed class ReceiptRepository(NpgsqlDataSource dataSource) : IReceiptRep
 
         var receiptRows = await connection.QueryAsync<ReceiptRow>(
             new CommandDefinition(
-                """
-                SELECT id, store_name AS StoreName, purchased_at AS PurchasedAt, total, status, created_at AS CreatedAt
+                $"""
+                SELECT {ReceiptColumns}
                 FROM receipts
                 ORDER BY created_at DESC
                 """,

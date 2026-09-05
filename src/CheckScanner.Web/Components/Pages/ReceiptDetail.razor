@@ -20,8 +20,8 @@
     {
         <div class="flex items-center justify-between gap-2">
             <div>
-                <h1 class="text-lg font-semibold text-slate-900">@(_receipt.StoreName ?? "Unknown store")</h1>
-                <p class="text-xs text-slate-500">@(_receipt.PurchasedAt?.ToString("MMM d, yyyy") ?? "Date pending")</p>
+                <h1 class="text-lg font-semibold text-slate-900">@ReceiptDisplayFormat.StoreName(_receipt.StoreName)</h1>
+                <p class="text-xs text-slate-500">@ReceiptDisplayFormat.PurchasedAt(_receipt.PurchasedAt)</p>
             </div>
             @if (_receipt.Status == ReceiptStatus.Flagged)
             {
@@ -93,9 +93,13 @@
                 class="w-32 rounded-md border border-slate-300 px-2 py-1 text-right text-sm" />
         </label>
 
-        @if (_statusMessage is not null)
+        @if (_lastSaveStatus is { } lastSaveStatus)
         {
-            <p class="text-sm @(_lastSaveFlagged ? "text-amber-700" : "text-emerald-700")">@_statusMessage</p>
+            <p class="text-sm @(lastSaveStatus == ReceiptStatus.Flagged ? "text-amber-700" : "text-emerald-700")">
+                @(lastSaveStatus == ReceiptStatus.Flagged
+                    ? "Saved, but it still doesn't reconcile — left flagged for review."
+                    : "Saved and reconciled.")
+            </p>
         }
 
         <button
@@ -117,15 +121,9 @@
     private decimal? _total;
     private bool _isSaving;
     private bool _notFound;
-    private string? _statusMessage;
-    private bool _lastSaveFlagged;
+    private ReceiptStatus? _lastSaveStatus;
 
     protected override async Task OnInitializedAsync()
-    {
-        await LoadAsync();
-    }
-
-    private async Task LoadAsync()
     {
         var receipt = await ReviewService.GetByIdAsync(Id, CancellationToken.None);
         if (receipt is null)
@@ -136,18 +134,7 @@
 
         _receipt = receipt;
         _total = receipt.Total;
-        _lineItems = receipt.LineItems
-            .Select(li => new ReceiptLineItemEditDto
-            {
-                Id = li.Id,
-                RawText = li.RawText,
-                Description = li.Description,
-                Category = li.Category,
-                Quantity = li.Quantity,
-                UnitPrice = li.UnitPrice,
-                LineTotal = li.LineTotal
-            })
-            .ToList();
+        _lineItems = receipt.LineItems.Select(ReceiptLineItemEditDto.FromEntity).ToList();
     }
 
     private void AddLine() => _lineItems.Add(new ReceiptLineItemEditDto());
@@ -157,15 +144,25 @@
     private async Task SaveAsync()
     {
         _isSaving = true;
-        _statusMessage = null;
+        _lastSaveStatus = null;
 
-        var status = await ReviewService.SaveAsync(Id, _total, _lineItems, CancellationToken.None);
-        await LoadAsync();
+        var (status, savedLineItems) = await ReviewService.SaveAsync(Id, _total, _lineItems, CancellationToken.None);
 
-        _lastSaveFlagged = status == ReceiptStatus.Flagged;
-        _statusMessage = _lastSaveFlagged
-            ? "Saved, but it still doesn't reconcile — left flagged for review."
-            : "Saved and reconciled.";
+        _lineItems = savedLineItems.Select(ReceiptLineItemEditDto.FromEntity).ToList();
+        _receipt = _receipt is null
+            ? null
+            : new Domain.Entities.Receipt
+            {
+                Id = _receipt.Id,
+                StoreName = _receipt.StoreName,
+                PurchasedAt = _receipt.PurchasedAt,
+                Total = _total,
+                Status = status,
+                CreatedAt = _receipt.CreatedAt,
+                Photos = _receipt.Photos,
+                LineItems = savedLineItems
+            };
+        _lastSaveStatus = status;
         _isSaving = false;
     }
 }

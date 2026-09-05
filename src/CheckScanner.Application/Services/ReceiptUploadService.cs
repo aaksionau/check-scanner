@@ -76,11 +76,9 @@ public sealed class ReceiptUploadService(
                 })
                 .ToList();
 
-            var isFlagged = ReceiptReconciler.Reconcile(parsed.Total, lineItems);
+            var status = ReceiptReconciler.DetermineStatus(parsed.Total, lineItems);
 
-            return NewReceipt(
-                isFlagged ? ReceiptStatus.Flagged : ReceiptStatus.Parsed,
-                parsed.StoreName, parsed.PurchasedAt, parsed.Total, lineItems);
+            return NewReceipt(status, parsed.StoreName, parsed.PurchasedAt, parsed.Total, lineItems);
         }
         catch (Exception ex)
         {

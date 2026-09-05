@@ -1,4 +1,5 @@
 using CheckScanner.Domain.Entities;
+using CheckScanner.Domain.Enums;
 
 namespace CheckScanner.Domain;
 
@@ -34,4 +35,8 @@ public static class ReceiptReconciler
         var maxExpectedTax = (summed * MaxTaxRate) + RoundingCushion;
         return difference > maxExpectedTax;
     }
+
+    /// <summary>The status a receipt should have given its reconciliation result.</summary>
+    public static ReceiptStatus DetermineStatus(decimal? printedTotal, IReadOnlyList<ReceiptLineItem> lineItems) =>
+        Reconcile(printedTotal, lineItems) ? ReceiptStatus.Flagged : ReceiptStatus.Parsed;
 }

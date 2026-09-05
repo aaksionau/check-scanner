@@ -24,28 +24,16 @@ public sealed class ReceiptReviewService(IReceiptRepository receiptRepository)
     public Task<Receipt?> GetByIdAsync(Guid id, CancellationToken cancellationToken) =>
         receiptRepository.GetByIdAsync(id, cancellationToken);
 
-    /// <summary>Re-reconciles the edited values and persists them; returns the resulting status.</summary>
-    public async Task<ReceiptStatus> SaveAsync(
+    /// <summary>Re-reconciles the edited values and persists them; returns the persisted line items and resulting status.</summary>
+    public async Task<(ReceiptStatus Status, IReadOnlyList<ReceiptLineItem> LineItems)> SaveAsync(
         Guid receiptId,
         decimal? total,
         IReadOnlyList<ReceiptLineItemEditDto> lineItems,
         CancellationToken cancellationToken)
     {
-        var entities = lineItems
-            .Select(item => new ReceiptLineItem
-            {
-                Id = item.Id ?? Guid.NewGuid(),
-                RawText = item.RawText,
-                Description = item.Description,
-                Category = item.Category,
-                Quantity = item.Quantity,
-                UnitPrice = item.UnitPrice,
-                LineTotal = item.LineTotal
-            })
-            .ToList();
-
-        var status = ReceiptReconciler.Reconcile(total, entities) ? ReceiptStatus.Flagged : ReceiptStatus.Parsed;
+        var entities = lineItems.Select(item => item.ToEntity()).ToList();
+        var status = ReceiptReconciler.DetermineStatus(total, entities);
         await receiptRepository.UpdateLineItemsAsync(receiptId, total, status, entities, cancellationToken);
-        return status;
+        return (status, entities);
     }
 }
